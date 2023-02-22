@@ -1,17 +1,67 @@
 import os
 import pandas as pd
-import numpy as np
+from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, \
-    f1_score
+import pickle as pk
 
-path = 'Titanic'
-train_path = os.path.join(path, 'train.csv')
-test_path = os.path.join(path, 'test.csv')
-train_df = pd.read_csv(train_path)
+folder = r'datasets/Titanic'
+
+'''Preprocessing'''
 
 
+# Fill missing values for age
+def preprocessing(df):
+    df['Age'] = df["Age"].fillna(value=int(df['Age'].mean()))
+    df['Embarked'] = df["Embarked"].fillna(value='S')
+    df['Fare'] = df["Fare"].fillna(value=int(df['Fare'].mean()))
+    # Drop columns
+    df = df.drop('Cabin', axis=1)
+    df = df.drop('Ticket', axis=1)
+    return df
+
+
+# Sorting out names by individuals title
+def categories(df, col):
+    for idx, name in enumerate(df["Name"]):
+        if ('Mrs.' in name) or ('Mme.' in name) or ('Mlle.' in name) or \
+                ('Mr.' in name) or ('Miss.' in name) or ('Capt.' in name):
+            df.iloc[idx, col] = 'Low'
+        elif ('Rev.' in name) or ('Dr.' in name) or ('Master.' in name):
+            df.iloc[idx, col] = 'Mid'
+        elif ('Major.' in name) or ('Col.' in name) or ('Don.' in name) or ('Lady.' in name):
+            df.iloc[idx, col] = 'High'
+        else:
+            df.iloc[idx, col] = 'Low'
+    return df
+
+
+# Mapping titles and embarked
+def mapping(df):
+    titles = {'Low': 0, 'Mid': 1, "High": 2}
+    df["Name"] = df["Name"].map(titles)
+    embark = {'C': 1, 'Q': 2, "S": 0}
+    df["Embarked"] = df["Embarked"].map(embark)
+    sex = {'female': 1, "male": 0}
+    df["Sex"] = df["Sex"].map(sex)
+    return df
+
+
+def extract_df(path, file, col_num):
+    path = os.path.join(path, file)
+    df = pd.read_csv(path)
+    df = preprocessing(df)
+    df = categories(df, col_num)
+    df = mapping(df)
+    return df
+
+
+train_df = extract_df(folder, 'train.csv', 3)
+test_df = extract_df(folder, 'test.csv', 2)
+
+# Scoring model
 def score_model(X, y, kf, model):
     accuracy_scores = []
     precision_scores = []
@@ -36,45 +86,25 @@ def score_model(X, y, kf, model):
     print('score:', np.mean(scores))
 
 
-# Remove unnecessary columns
-train_df.drop('Name', axis=1, inplace=True)
-train_df.drop('Ticket', axis=1, inplace=True)
-train_df.drop('Cabin', axis=1, inplace=True)
-
-embark_dic = {'S': 1, 'C': 2, 'Q': 3}
-train_df["Embarked"] = train_df["Embarked"].map(embark_dic)
-
-mean_age = int(train_df['Age'].mean())
-train_df["Age"].fillna(mean_age, inplace=True)
-
-sex_dic = {'male': 0, 'female': 1}
-train_df["Sex"] = train_df["Sex"].map(sex_dic)
-
-X = train_df[['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']].values
+# Training model
+X = train_df[["Pclass", "Name", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]].values
+X1 = test_df[["Pclass", "Name", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]].values
 y = train_df['Survived'].values
-
-# train model
-model = HistGradientBoostingClassifier()
 kf = KFold(n_splits=5, shuffle=True)
-score_model(X, y, kf, model)
+logR = LogisticRegression(max_iter=1000)
 
-# test data
-test_df = pd.read_csv(test_path)
-test_df.drop('Name', axis=1, inplace=True)
-test_df.drop('Ticket', axis=1, inplace=True)
-test_df.drop('Cabin', axis=1, inplace=True)
-test_df["Embarked"] = test_df["Embarked"].map(embark_dic)
-test_df["Age"].fillna(mean_age, inplace=True)
-test_df["Sex"] = test_df["Sex"].map(sex_dic)
-X1 = test_df[['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']].values
+score_model(X, y, kf, logR)
+logR_pred = logR.predict(X1)
 
-y_test_pred = model.predict(X1)
-print(y_test_pred)
+# save model
+pk.dump(logR, open(r'titanic_models/LogisticRegression.p', 'wb'))
 
-with open('answer.csv', 'a') as file:
-    start = 892
+# loading model
+logR = pk.load(open(r'titanic_models/LogisticRegression.p', 'rb'))
+logR_pred = logR.predict(X1)
+
+print('Writing to csv file')
+with open('titanic_answers.csv', 'w') as file:
     file.write('PassengerId,Survived\n')
-    for i in y_test_pred:
-        text = f'{start},{i}\n'
-        file.write(text)
-        start += 1
+    for index, prediction in enumerate(logR_pred):
+        file.write(f'{index + 892},{prediction}\n')
