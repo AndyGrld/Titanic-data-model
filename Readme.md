@@ -1,6 +1,6 @@
 # First kaggle challenge
 
-Used a HistGradientBoostingClassifier model to train the data using 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked' columns in the train.csv file and preidicted for 'Surviving'
+Used a HistGradientBoostingClassifier and a logistic regression model to train the data using 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked' columns in the train.csv file and preidicted for 'Surviving'
 
 Used the score_model function to split using Kfold and scored the model
 
