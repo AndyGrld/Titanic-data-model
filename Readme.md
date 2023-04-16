@@ -1,9 +1,19 @@
 # First kaggle challenge
 
-Used a HistGradientBoostingClassifier and a logistic regression model to train the data using 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked' columns in the train.csv file and preidicted for 'Surviving'
+All datasets located in Titanic directory.
 
-Used the score_model function to split using Kfold and scored the model
+## Getting started
+pip install -r requirements.txt
 
-Predicted the Survival rate for passengers in test.csv and stored survival chance in answer.csv
+## Preprocessing
+1. Filled in missing data with the average value in specified columns
+2. Dropped cabin and ticket columns.
+3. For names, sorted them according to titles, eg.Mr. and Mrs. had 'low' survival rates and  Major. and Col. had higher survial chances.
 
+## Training
+1. Used Logistic Regression model and a KFold alogrithm to split the model for training.
+2. The score_model function trains the model and displays the scores.
+3. After training model is saved in titanic_models directory using the pickle library.
+
+## Prediction
 1 for Survived, 0 for did not Survive
